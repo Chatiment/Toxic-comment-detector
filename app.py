@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 
-app = FastAPI()
+app = FastAPI(title="Toxic Comments Detector")
 
 # Load the Tfidf and model
 tfidf = pickle.load(open("tf_idf.pkt", "rb"))
