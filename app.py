@@ -1,36 +1,33 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import pickle
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
+from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
+from textblob import TextBlob
+import uvicorn
 
 app = FastAPI(title="Toxic Comments Detector")
 
-# Load the Tfidf and model
-tfidf = pickle.load(open("tf_idf.pkt", "rb"))
-nb_model = pickle.load(open("toxicity_model.pkt", "rb"))
+@app.get("/", include_in_schema=False)
+def index():
+    return RedirectResponse("/docs", status_code=308)
 
-class PredictRequest(BaseModel):
-    text: str
+@app.get("/sentiment-analysis/{text}")
+def sentiment_analysis(text: str):
+    blob = TextBlob(text)
+    polarity = blob.sentiment.polarity
+    subjectivity = blob.sentiment.subjectivity
 
-@app.post("/predict")
-async def predict(request: PredictRequest):
-    try:
-        text = request.text
-        # Transform the input to Tfidf vectors
-        text_tfidf = tfidf.transform([text]).toarray()
-        
-        # Predict the class of the input text
-        prediction = nb_model.predict(text_tfidf)[0]
+    if polarity > 0:
+        sentiment = "positive"
+    elif polarity < 0:
+        sentiment = "negative"
+    else:
+        sentiment = "neutral"
 
-        # Map the predicted class to a string
-        class_name = "Toxic" if prediction == 1 else "Non-Toxic"
+    return {
+        "text": text,
+        "sentiment": sentiment,
+        "polarity": polarity,
+        "subjectivity": subjectivity
+    }
 
-        # Return the prediction in a JSON response
-        return {
-            "text": text,
-            "class": class_name
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="0.0.0.0", port=8000)
